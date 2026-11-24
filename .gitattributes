@@ -1,0 +1,74 @@
+# Normalize text files across operating systems
+
+* text=auto
+
+# Python
+*.py text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# PowerShell scripts
+*.ps1 text eol=crlf
+
+# Configuration files
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.rst text eol=lf
+*.txt text eol=lf
+
+# Git and project metadata
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+*.cff text eol=lf
+
+# C/C++ files, if introduced
+*.c text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+*.hpp text eol=lf
+
+# Web files, if introduced
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.7z binary
+*.mp4 binary
+*.mov binary
+*.avi binary
+*.mkv binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.flac binary
+*.xlsx binary
+*.xls binary
+*.docx binary
+*.pptx binary
+*.sqlite binary
+*.db binary
+*.bin binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
