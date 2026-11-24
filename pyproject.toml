@@ -9,7 +9,7 @@ version = "1.0.0"
 description = "A configurable, local-first computational research toolkit."
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
-license = "MIT"
+license = "APACHE 2.0"
 authors = [
     { name = "Som Subhro Nath" }
 ]
