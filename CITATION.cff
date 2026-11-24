@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use Icebrew in your research, software, or computational experiments, please cite it."
+title: "Icebrew: A Configurable, Local-First Computational Research Toolkit"
+type: software
+authors:
+  - family-names: Nath
+    given-names: Som Subhro
+    affiliation: "Independent Developer"
+version: 1.0.0
+license: Apache-2.0
+repository-code: "https://github.com/SomSubhroN/Icebrew"
+keywords:
+  - computational research
+  - data analysis
+  - statistics
+  - artificial intelligence
+  - local-first computing
+  - reproducible research
+  - Python
+abstract: >-
+  Icebrew is a configurable, local-first computational research toolkit
+  designed to unify data analysis, statistical workflows, visualization,
+  sentiment analysis, local AI experimentation, media processing, and
+  reproducible computational workflows within a modular command-line
+  environment.
