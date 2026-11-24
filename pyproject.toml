@@ -1,0 +1,77 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "icebrew"
+version = "1.0.0"
+description = "A configurable, local-first computational research toolkit."
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "MIT"
+authors = [
+    { name = "Som Subhro Nath" }
+]
+keywords = [
+    "research",
+    "data-analysis",
+    "statistics",
+    "artificial-intelligence",
+    "local-first"
+]
+
+dependencies = [
+    "typer>=0.12,<1.0",
+    "rich>=13.9,<15.0",
+    "pydantic>=2.9,<3.0",
+    "PyYAML>=6.0,<7.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<10.0",
+    "pytest-cov>=5.0,<8.0",
+    "ruff>=0.8,<1.0"
+]
+
+data = [
+    "pandas>=2.2,<4.0",
+    "openpyxl>=3.1,<4.0"
+]
+
+statistics = [
+    "scipy>=1.14,<2.0",
+    "statsmodels>=0.14,<1.0"
+]
+
+plotting = [
+    "matplotlib>=3.9,<4.0"
+]
+
+sentiment = [
+    "vaderSentiment>=3.3,<4.0"
+]
+
+images = [
+    "Pillow>=10.0,<13.0"
+]
+
+[project.scripts]
+icebrew = "icebrew.cli.app:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/icebrew"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
