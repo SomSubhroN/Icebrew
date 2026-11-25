@@ -1,13 +1,15 @@
+
 """Icebrew command-line application."""
 
 import platform
 import sys
-from icebrew.diagnostics.engine import run_diagnostics
 
 import typer
 from rich.console import Console
 
 from icebrew import __version__
+from icebrew.cli.data import data_app # type: ignore
+from icebrew.diagnostics.engine import run_diagnostics
 
 app = typer.Typer(
     name="icebrew",
@@ -16,6 +18,9 @@ app = typer.Typer(
 )
 
 console = Console()
+
+# Register subcommands
+app.add_typer(data_app, name="data")
 
 
 @app.callback()
@@ -30,6 +35,7 @@ def version() -> None:
     console.print(
         f"[bold cyan]Icebrew[/bold cyan] [green]{__version__}[/green]"
     )
+
 
 @app.command()
 def doctor() -> None:
@@ -53,7 +59,6 @@ def doctor() -> None:
     warnings = 0
 
     for result in results:
-
         style = status_styles.get(result.status, "white")
 
         console.print(
@@ -63,30 +68,24 @@ def doctor() -> None:
 
         if result.status == "FAIL":
             failures += 1
-
         elif result.status == "WARN":
             warnings += 1
 
     console.print()
 
     if failures:
-
         console.print(
             f"[bold red]Diagnostics failed: "
             f"{failures} failure(s), {warnings} warning(s).[/bold red]"
         )
-
         raise typer.Exit(code=1)
 
     if warnings:
-
         console.print(
             f"[bold yellow]Diagnostics completed with "
             f"{warnings} warning(s).[/bold yellow]"
         )
-
     else:
-
         console.print(
             "[bold green]Diagnostics completed successfully.[/bold green]"
         )
