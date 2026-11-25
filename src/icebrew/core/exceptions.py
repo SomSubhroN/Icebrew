@@ -1,20 +1,20 @@
-
 """Structured exception hierarchy for Icebrew."""
 
 
 class IcebrewError(Exception):
     """Base exception for all expected Icebrew errors."""
 
+    code: str = "ICEBREW_ERROR"
     exit_code: int = 1
 
     def __init__(
         self,
         message: str,
         *,
-        code: str = "ICEBREW_ERROR",
+        code: str | None = None,
     ) -> None:
         self.message = message
-        self.code = code
+        self.code = code or type(self).code
         super().__init__(message)
 
 
@@ -63,6 +63,8 @@ class SentimentError(IcebrewError):
 class AIError(IcebrewError):
     """Base exception for AI-related failures."""
 
+    code = "AI_ERROR"
+
 
 class ModelNotFoundError(AIError):
     """Raised when a requested model cannot be found."""
@@ -97,18 +99,28 @@ class InferenceError(AIError):
 class MediaError(IcebrewError):
     """Raised when media processing fails."""
 
+    code = "MEDIA_ERROR"
+
 
 class ReportingError(IcebrewError):
     """Raised when report generation fails."""
+
+    code = "REPORTING_ERROR"
 
 
 class ExperimentError(IcebrewError):
     """Raised when experiment management fails."""
 
+    code = "EXPERIMENT_ERROR"
+
 
 class ExtensionError(IcebrewError):
     """Raised when extension operations fail."""
 
+    code = "EXTENSION_ERROR"
+
 
 class SecurityError(IcebrewError):
     """Raised when a security-related operation fails."""
+
+    code = "SECURITY_ERROR"
