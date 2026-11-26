@@ -28,6 +28,16 @@ from icebrew.stats.nonparametric import (
     kruskal_wallis_test,
 )
 
+from icebrew.stats.anova import (
+    one_way_anova,
+    welch_anova,
+    tukey_hsd,
+    games_howell,
+)
+
+from icebrew.stats.multiple_testing import correct_pvalues
+
+
 stats_app = typer.Typer(
     name="stats",
     help="Statistical analysis tools.",
@@ -491,5 +501,141 @@ def kruskal(
     }
 
     result = kruskal_wallis_test(groups)
+
+    _emit(result, json_output)
+
+
+@stats_app.command("anova")
+def anova_command(
+    file_path: str = typer.Argument(..., help="Dataset path."),
+    columns: list[str] = typer.Option(
+        ..., "--column", "-c", help="Group column. Repeat at least twice."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Output JSON."
+    ),
+):
+    """Perform classical one-way ANOVA."""
+
+    if len(columns) < 2:
+        raise typer.BadParameter(
+            "At least two group columns are required."
+        )
+
+    df = _load_columns(file_path, columns)
+
+    result = one_way_anova({
+        column: df[column]
+        for column in columns
+    })
+
+    _emit(result, json_output)
+
+
+@stats_app.command("welch-anova")
+def welch_anova_command(
+    file_path: str = typer.Argument(..., help="Dataset path."),
+    columns: list[str] = typer.Option(
+        ..., "--column", "-c", help="Group column. Repeat at least twice."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Output JSON."
+    ),
+):
+    """Perform Welch's one-way ANOVA."""
+
+    if len(columns) < 2:
+        raise typer.BadParameter(
+            "At least two group columns are required."
+        )
+
+    df = _load_columns(file_path, columns)
+
+    result = welch_anova({
+        column: df[column]
+        for column in columns
+    })
+
+    _emit(result, json_output)
+
+
+@stats_app.command("posthoc")
+def posthoc_command(
+    file_path: str = typer.Argument(..., help="Dataset path."),
+    columns: list[str] = typer.Option(
+        ..., "--column", "-c", help="Group column. Repeat at least twice."
+    ),
+    method: str = typer.Option(
+        "tukey",
+        "--method",
+        help="tukey or games-howell.",
+    ),
+    alpha: float = typer.Option(
+        0.05, "--alpha"
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Output JSON."
+    ),
+):
+    """Perform post-hoc pairwise comparisons."""
+
+    if len(columns) < 2:
+        raise typer.BadParameter(
+            "At least two groups are required."
+        )
+
+    df = _load_columns(file_path, columns)
+
+    groups = {
+        column: df[column]
+        for column in columns
+    }
+
+    if method == "tukey":
+        result = tukey_hsd(groups, alpha=alpha)
+    elif method == "games-howell":
+        result = games_howell(groups, alpha=alpha)
+    else:
+        raise typer.BadParameter(
+            "Method must be 'tukey' or 'games-howell'."
+        )
+
+    _emit(result, json_output)
+
+
+@stats_app.command("correct-p")
+def correct_p_command(
+    p_values: str = typer.Argument(
+        ..., help="Comma-separated p-values."
+    ),
+    method: str = typer.Option(
+        "holm",
+        "--method",
+        help="bonferroni, holm, or bh.",
+    ),
+    alpha: float = typer.Option(
+        0.05, "--alpha"
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Output JSON."
+    ),
+):
+    """Correct p-values for multiple testing."""
+
+    try:
+        values = [
+            float(value.strip())
+            for value in p_values.split(",")
+        ]
+    except ValueError as exc:
+        raise typer.BadParameter(
+            "P-values must be comma-separated numeric values."
+        ) from exc
+
+    result = correct_pvalues(
+        values,
+        method=method,
+        alpha=alpha,
+    )
 
     _emit(result, json_output)

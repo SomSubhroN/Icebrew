@@ -22,6 +22,16 @@ from icebrew.stats.nonparametric import (
     kruskal_wallis_test,
 )
 
+from icebrew.stats.anova import (
+    one_way_anova,
+    welch_anova,
+    tukey_hsd,
+    games_howell,
+)
+
+from icebrew.stats.multiple_testing import correct_pvalues
+
+
 __all__ = [
     "describe_numeric",
     "describe_dataframe",
@@ -38,4 +48,9 @@ __all__ = [
     "wilcoxon_signed_rank_test",
     "mann_whitney_u_test",
     "kruskal_wallis_test",
+    "one_way_anova",
+    "welch_anova",
+    "tukey_hsd",
+    "games_howell",
+    "correct_pvalues",
 ]

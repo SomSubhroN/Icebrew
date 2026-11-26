@@ -263,11 +263,11 @@ The development roadmap broadly includes:
 - [x] Initial `doctor` diagnostics.
 - [x] Structured exception foundation.
 - [x] Initial platform installation scripts.
-- [ ] Installer lifecycle validation.
-- [ ] Configuration system.
-- [ ] Centralized error handling.
-- [ ] Core data module.
-- [ ] Statistical module.
+- [x] Installer lifecycle validation.
+- [x] Configuration system.
+- [x] Centralized error handling.
+- [x] Core data module.
+- [x] Statistical module.
 - [ ] Plotting module.
 - [ ] Sentiment module.
 - [ ] Structured insight engine.
