@@ -1,332 +1,193 @@
 
-"""CLI commands for Icebrew's data toolkit."""
+from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any
-from icebrew.cli.datetime import datetime_app
-import pandas as pd
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from icebrew.cli.utils import (
-    load_dataset,
-    print_dataframe,
-    print_dict,
-    save_dataset,
-)
+from icebrew.cli.utils import load_dataset, save_dataset, print_dataframe
 from icebrew.cli.transform import transform_app
-
-from icebrew.data.converter import convert_data
-from icebrew.data.exporter import export_data
-from icebrew.data.frequency import crosstab, value_counts
-from icebrew.data.inspector import inspect_data
-from icebrew.data.missing import analyze_missing
-from icebrew.data.profiler import profile_data
-from icebrew.data.quality import analyze_quality
-from icebrew.data.sampling import sample_data
+from icebrew.cli.datetime import datetime_app
 
 data_app = typer.Typer(
     name="data",
-    help="Load, inspect, profile, clean, and analyze datasets.",
+    help="Dataset loading, inspection, analysis, cleaning and transformation.",
     no_args_is_help=True,
 )
 
 console = Console()
 
-# Register nested command groups.
+# Register subcommand groups
 data_app.add_typer(transform_app, name="transform")
+data_app.add_typer(datetime_app, name="datetime")
 
 
-def parse_json(value: str, argument_name: str) -> Any:
-    """Parse JSON and raise an actionable CLI error."""
-
+def parse_json(value: str, option_name: str = "value") -> Any:
+    """Parse JSON CLI input and produce an actionable error."""
     try:
         return json.loads(value)
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(
-            f"{argument_name} must contain valid JSON: {exc.msg}"
+            f"{option_name} must contain valid JSON: {exc}"
         ) from exc
 
 
-def print_report(report: Any, title: str = "Report") -> None:
-    """Print a structured report in a readable format."""
-
-    if isinstance(report, dict):
-        table = Table(title=title)
-        table.add_column("Key", style="cyan")
-        table.add_column("Value")
-
-        for key, value in report.items():
-            if isinstance(value, (dict, list)):
-                value = json.dumps(value, indent=2, default=str)
-            table.add_row(str(key), str(value))
-
-        console.print(table)
-        return
-
-    console.print(report)
-
-
-# ---------------------------------------------------------------------
-# LOAD
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
-def load(
-    file: Path = typer.Argument(..., help="Dataset to load."),
-) -> None:
-    """Load and display a dataset."""
-
-    df = load_dataset(file)
-
-    console.print(
-        f"[green]Loaded dataset:[/green] {file}"
-    )
-    console.print(
-        f"[bold]Shape:[/bold] {df.shape[0]} rows × {df.shape[1]} columns"
-    )
-
-    print_dataframe(df, title="Dataset")
-
-
-# ---------------------------------------------------------------------
-# INSPECT
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
-def inspect(
-    file: Path = typer.Argument(..., help="Dataset to inspect."),
-    preview: int = typer.Option(
-        5,
-        "--preview",
-        "-n",
-        min=0,
-        help="Number of preview rows.",
-    ),
-) -> None:
-    """Inspect a dataset's structure."""
-
-    df = load_dataset(file)
-    report = inspect_data(df, preview_rows=preview)
-
-    console.print()
-    console.print("[bold cyan]Dataset Inspection[/bold cyan]")
-    console.print()
+def print_report(report: dict, title: str = "Report") -> None:
+    """Display a dictionary report using Rich."""
+    table = Table(title=title)
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", overflow="fold")
 
     for key, value in report.items():
-        if key == "preview":
-            continue
+        table.add_row(str(key), str(value))
 
-        if isinstance(value, (dict, list)):
-            value = json.dumps(value, indent=2, default=str)
-
-        console.print(f"[bold]{key}:[/bold] {value}")
-
-    if "preview" in report and isinstance(report["preview"], pd.DataFrame):
-        print_dataframe(
-            report["preview"],
-            title="Preview",
-            max_rows=max(preview, 1),
-        )
+    console.print(table)
 
 
-# ---------------------------------------------------------------------
-# PROFILE
-# ---------------------------------------------------------------------
+@data_app.command("load")
+def load(
+    input_file: Path = typer.Argument(..., help="Dataset file to load."),
+):
+    """Load and display a dataset."""
+    df = load_dataset(input_file)
+    print_dataframe(df, title=f"Loaded: {input_file.name}")
 
 
-@data_app.command()
-def profile(
-    file: Path = typer.Argument(..., help="Dataset to profile."),
-    top: int = typer.Option(
-        5,
-        "--top",
-        min=1,
-        help="Number of top values for categorical columns.",
+@data_app.command("inspect")
+def inspect(
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    preview_rows: int = typer.Option(
+        5, "--rows", "-r", min=0, help="Number of preview rows."
     ),
-) -> None:
+):
+    """Inspect dataset structure and basic metadata."""
+    from icebrew.data.inspector import inspect_data
+
+    df = load_dataset(input_file)
+    report = inspect_data(df, preview_rows=preview_rows)
+
+    console.print(f"\n[bold cyan]Dataset:[/bold cyan] {input_file}")
+    print_report(
+        {
+            "Rows": report.get("shape", (0, 0))[0],
+            "Columns": report.get("shape", (0, 0))[1],
+            "Column names": report.get("columns"),
+            "Data types": report.get("dtypes"),
+            "Missing values": report.get("missing"),
+            "Duplicates": report.get("duplicates"),
+            "Memory usage": report.get("memory_usage"),
+        },
+        title="Dataset Inspection",
+    )
+
+    if "preview" in report:
+        print_dataframe(report["preview"], title="Preview")
+
+
+@data_app.command("profile")
+def profile(
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    top_n: int = typer.Option(5, "--top", min=1, help="Top values to display."),
+    quantiles: bool = typer.Option(
+        True, "--quantiles/--no-quantiles", help="Include numeric quantiles."
+    ),
+):
     """Generate a dataset profile."""
+    from icebrew.data.profiler import profile_data
 
-    df = load_dataset(file)
-    report = profile_data(df, top_n=top)
+    df = load_dataset(input_file)
+    report = profile_data(df, top_n=top_n, include_quantiles=quantiles)
 
-    console.print()
-    console.print("[bold cyan]Dataset Profile[/bold cyan]")
-    console.print()
+    table = Table(title="Dataset Profile")
+    table.add_column("Column", style="cyan")
+    table.add_column("Details", overflow="fold")
 
     for column, details in report.items():
-        table = Table(title=str(column))
-        table.add_column("Metric", style="cyan")
-        table.add_column("Value")
+        table.add_row(str(column), str(details))
 
-        for key, value in details.items():
-            if isinstance(value, (dict, list)):
-                value = json.dumps(value, indent=2, default=str)
-
-            table.add_row(str(key), str(value))
-
-        console.print(table)
+    console.print(table)
 
 
-# ---------------------------------------------------------------------
-# QUALITY
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("quality")
 def quality(
-    file: Path = typer.Argument(..., help="Dataset to analyze."),
-) -> None:
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+):
     """Analyze dataset quality."""
+    from icebrew.data.quality import analyze_quality
 
-    df = load_dataset(file)
+    df = load_dataset(input_file)
     report = analyze_quality(df)
 
-    console.print()
-    console.print("[bold cyan]Data Quality Report[/bold cyan]")
-    console.print()
-
-    print_report(report, "Quality Report")
+    print_report(report, title="Data Quality")
 
 
-# ---------------------------------------------------------------------
-# MISSING DATA
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("missing")
 def missing(
-    file: Path = typer.Argument(..., help="Dataset to analyze."),
-) -> None:
-    """Analyze missing values."""
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+):
+    """Analyze missing data."""
+    from icebrew.data.missing import analyze_missing
 
-    df = load_dataset(file)
+    df = load_dataset(input_file)
     report = analyze_missing(df)
 
-    console.print()
-    console.print("[bold cyan]Missing Data Analysis[/bold cyan]")
-    console.print()
-
-    print_report(report, "Missing Data")
+    print_report(report, title="Missing Data Analysis")
 
 
-# ---------------------------------------------------------------------
-# SAMPLE
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("sample")
 def sample(
-    file: Path = typer.Argument(..., help="Dataset to sample."),
-    n: int | None = typer.Option(
-        None,
-        "--n",
-        min=1,
-        help="Number of rows to sample.",
-    ),
-    fraction: float | None = typer.Option(
-        None,
-        "--fraction",
-        min=0.0,
-        max=1.0,
-        help="Fraction of rows to sample.",
-    ),
-    seed: int | None = typer.Option(
-        None,
-        "--seed",
-        help="Random seed.",
-    ),
-    output: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Output file.",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite output if it exists.",
-    ),
-) -> None:
-    """Sample rows from a dataset."""
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    output: Path = typer.Option(..., "--output", "-o"),
+    n: int | None = typer.Option(None, "--n", min=1),
+    fraction: float | None = typer.Option(None, "--fraction", min=0.0, max=1.0),
+    random_state: int | None = typer.Option(None, "--seed"),
+    replace: bool = typer.Option(False, "--replace"),
+    overwrite: bool = typer.Option(False, "--overwrite"),
+):
+    """Randomly sample rows from a dataset."""
+    from icebrew.data.sampling import sample_data
 
-    if n is not None and fraction is not None:
-        raise typer.BadParameter(
-            "Specify either --n or --fraction, not both."
-        )
-
-    if n is None and fraction is None:
-        raise typer.BadParameter(
-            "Specify either --n or --fraction."
-        )
-
-    df = load_dataset(file)
+    df = load_dataset(input_file)
 
     result = sample_data(
         df,
         n=n,
         fraction=fraction,
-        random_state=seed,
+        random_state=random_state,
+        replace=replace,
     )
 
-    print_dataframe(result, title="Sample")
-
-    if output:
-        save_dataset(result, output, overwrite=overwrite)
-        console.print(
-            f"[green]Sample saved to:[/green] {output}"
-        )
+    save_dataset(result, output, overwrite=overwrite)
+    console.print(f"[green]Sample saved:[/green] {output}")
 
 
-# ---------------------------------------------------------------------
-# CLEAN
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("clean")
 def clean(
-    file: Path = typer.Argument(..., help="Dataset to clean."),
-    drop_duplicates: bool = typer.Option(
-        False,
-        "--drop-duplicates",
-        help="Remove duplicate rows.",
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    output: Path = typer.Option(..., "--output", "-o"),
+    drop_duplicates: bool = typer.Option(False, "--drop-duplicates"),
+    drop_empty_rows: bool = typer.Option(False, "--drop-empty-rows"),
+    drop_empty_columns: bool = typer.Option(False, "--drop-empty-columns"),
+    trim_whitespace: bool = typer.Option(False, "--trim-whitespace"),
+    replace_values: str | None = typer.Option(
+        None, "--replace", help="JSON mapping of replacement values."
     ),
-    drop_empty_rows: bool = typer.Option(
-        False,
-        "--drop-empty-rows",
-        help="Remove fully empty rows.",
+    normalize_missing: str | None = typer.Option(
+        None, "--normalize-missing", help="JSON list of missing-value tokens."
     ),
-    drop_empty_columns: bool = typer.Option(
-        False,
-        "--drop-empty-columns",
-        help="Remove fully empty columns.",
+    rename_columns: str | None = typer.Option(
+        None, "--rename", help="JSON mapping of old to new column names."
     ),
-    trim_whitespace: bool = typer.Option(
-        False,
-        "--trim-whitespace",
-        help="Trim whitespace from string values.",
-    ),
-    output: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Output file.",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite output if it exists.",
-    ),
-) -> None:
+    overwrite: bool = typer.Option(False, "--overwrite"),
+):
     """Clean a dataset."""
-
     from icebrew.data.cleaner import clean_data
 
-    df = load_dataset(file)
+    df = load_dataset(input_file)
 
     result = clean_data(
         df,
@@ -334,285 +195,175 @@ def clean(
         drop_empty_rows=drop_empty_rows,
         drop_empty_columns=drop_empty_columns,
         trim_whitespace=trim_whitespace,
+        replace_values=parse_json(replace_values, "--replace")
+        if replace_values is not None
+        else None,
+        normalize_missing=parse_json(normalize_missing, "--normalize-missing")
+        if normalize_missing is not None
+        else None,
+        rename_columns=parse_json(rename_columns, "--rename")
+        if rename_columns is not None
+        else None,
     )
 
-    print_dataframe(result, title="Cleaned Data")
-
-    console.print(
-        f"[bold]Original shape:[/bold] {df.shape}"
-    )
-    console.print(
-        f"[bold]Result shape:[/bold] {result.shape}"
-    )
-
-    if output:
-        save_dataset(result, output, overwrite=overwrite)
-        console.print(
-            f"[green]Cleaned dataset saved to:[/green] {output}"
-        )
+    save_dataset(result, output, overwrite=overwrite)
+    console.print(f"[green]Cleaned dataset saved:[/green] {output}")
 
 
-# ---------------------------------------------------------------------
-# FREQUENCIES
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("frequencies")
 def frequencies(
-    file: Path = typer.Argument(..., help="Dataset to analyze."),
-    column: str = typer.Option(
-        ...,
-        "--column",
-        "-c",
-        help="Column to analyze.",
-    ),
-    normalize: bool = typer.Option(
-        False,
-        "--normalize",
-        help="Display relative frequencies.",
-    ),
-    top: int | None = typer.Option(
-        None,
-        "--top",
-        min=1,
-        help="Limit displayed categories.",
-    ),
-    output: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Output file.",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite output if it exists.",
-    ),
-) -> None:
-    """Calculate value frequencies."""
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    column: str = typer.Option(..., "--column", "-c"),
+    normalize: bool = typer.Option(False, "--normalize"),
+    dropna: bool = typer.Option(True, "--dropna/--keepna"),
+    sort: bool = typer.Option(True, "--sort/--no-sort"),
+    ascending: bool = typer.Option(False, "--ascending"),
+    top_n: int | None = typer.Option(None, "--top", min=1),
+):
+    """Calculate value frequencies for a column."""
+    from icebrew.data.frequency import value_counts
 
-    df = load_dataset(file)
+    df = load_dataset(input_file)
 
     result = value_counts(
         df,
         column,
         normalize=normalize,
-        top_n=top,
+        dropna=dropna,
+        sort=sort,
+        ascending=ascending,
+        top_n=top_n,
     )
 
-    if isinstance(result, pd.Series):
-        result = result.to_frame(name="frequency")
-
-    print_dataframe(result, title="Frequencies")
-
-    if output:
-        save_dataset(result, output, overwrite=overwrite)
-        console.print(
-            f"[green]Frequencies saved to:[/green] {output}"
-        )
-
-
-# ---------------------------------------------------------------------
-# CROSSTAB
-# ---------------------------------------------------------------------
+    print_dataframe(result.reset_index(), title=f"Frequencies: {column}")
 
 
 @data_app.command("crosstab")
 def crosstab_command(
-    file: Path = typer.Argument(..., help="Dataset to analyze."),
-    index: str = typer.Option(
-        ...,
-        "--index",
-        "-i",
-        help="Row variable.",
-    ),
-    columns: str = typer.Option(
-        ...,
-        "--columns",
-        "-c",
-        help="Column variable.",
-    ),
-    normalize: str = typer.Option(
-        "none",
-        "--normalize",
-        help="Normalization: none, all, index, columns.",
-    ),
-    margins: bool = typer.Option(
-        False,
-        "--margins",
-        help="Include totals.",
-    ),
-    output: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Output file.",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite output if it exists.",
-    ),
-) -> None:
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    index: str = typer.Option(..., "--index"),
+    columns: str = typer.Option(..., "--columns"),
+    normalize: str = typer.Option(False, "--normalize"),
+    margins: bool = typer.Option(False, "--margins"),
+    dropna: bool = typer.Option(True, "--dropna/--keepna"),
+):
     """Create a cross-tabulation."""
+    from icebrew.data.frequency import crosstab
 
-    df = load_dataset(file)
-
-    normalization_map = {
-        "none": False,
-        "all": True,
-        "index": "index",
-        "columns": "columns",
-    }
-
-    if normalize not in normalization_map:
-        raise typer.BadParameter(
-            "Normalize must be none, all, index, or columns."
-        )
+    df = load_dataset(input_file)
 
     result = crosstab(
         df,
         index=index,
         columns=columns,
-        normalize=normalization_map[normalize],
+        normalize=normalize,
         margins=margins,
+        dropna=dropna,
     )
 
     print_dataframe(result, title="Cross-tabulation")
 
-    if output:
-        save_dataset(result, output, overwrite=overwrite)
-        console.print(
-            f"[green]Cross-tabulation saved to:[/green] {output}"
-        )
 
-
-# ---------------------------------------------------------------------
-# EXPORT
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("export")
 def export(
-    file: Path = typer.Argument(..., help="Input dataset."),
-    output: Path = typer.Argument(..., help="Output file."),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite output if it exists.",
-    ),
-) -> None:
-    """Export a dataset to another supported format."""
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    output: Path = typer.Option(..., "--output", "-o"),
+    format: str | None = typer.Option(None, "--format"),
+    overwrite: bool = typer.Option(False, "--overwrite"),
+    index: bool = typer.Option(False, "--index"),
+    encoding: str = typer.Option("utf-8", "--encoding"),
+    sheet_name: str = typer.Option("Sheet1", "--sheet"),
+):
+    """Export a dataset into another format."""
+    from icebrew.data.exporter import export_data
 
-    df = load_dataset(file)
+    df = load_dataset(input_file)
 
     export_data(
         df,
         output,
+        format=format,
         overwrite=overwrite,
+        index=index,
+        encoding=encoding,
+        sheet_name=sheet_name,
     )
 
-    console.print(
-        f"[green]Dataset exported to:[/green] {output}"
-    )
+    console.print(f"[green]Export completed:[/green] {output}")
 
 
-# ---------------------------------------------------------------------
-# CONVERT
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("convert")
 def convert(
-    file: Path = typer.Argument(..., help="Input dataset."),
-    spec: str = typer.Option(
-        ...,
-        "--spec",
-        help="JSON mapping of columns to data types.",
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    conversions: str = typer.Option(
+        ..., "--conversions", help="JSON mapping of columns to target types."
     ),
-    output: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Output file.",
-    ),
-    errors: str = typer.Option(
-        "raise",
-        "--errors",
-        help="Conversion error mode: raise, coerce, ignore.",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite output if it exists.",
-    ),
-) -> None:
+    output: Path = typer.Option(..., "--output", "-o"),
+    errors: str = typer.Option("raise", "--errors"),
+    overwrite: bool = typer.Option(False, "--overwrite"),
+):
     """Convert column data types."""
+    from icebrew.data.converter import convert_data
 
-    df = load_dataset(file)
-    conversion_spec = parse_json(spec, "--spec")
+    df = load_dataset(input_file)
+    mapping = parse_json(conversions, "--conversions")
 
-    if not isinstance(conversion_spec, dict) or not conversion_spec:
-        raise typer.BadParameter(
-            "Conversion specification must be a non-empty JSON object."
-        )
+    result = convert_data(df, mapping, errors=errors)
+    save_dataset(result, output, overwrite=overwrite)
 
-    if errors not in {"raise", "coerce", "ignore"}:
-        raise typer.BadParameter(
-            "Errors must be raise, coerce, or ignore."
-        )
-
-    result = convert_data(
-        df,
-        conversion_spec,
-        errors=errors,
-    )
-
-    print_dataframe(result, title="Converted Data")
-
-    if output:
-        save_dataset(result, output, overwrite=overwrite)
-        console.print(
-            f"[green]Converted dataset saved to:[/green] {output}"
-        )
+    console.print(f"[green]Conversion completed:[/green] {output}")
 
 
-# ---------------------------------------------------------------------
-# VALIDATE
-# ---------------------------------------------------------------------
-
-
-@data_app.command()
+@data_app.command("validate")
 def validate(
-    file: Path = typer.Argument(..., help="Dataset to validate."),
-    spec: str = typer.Option(
-        ...,
-        "--spec",
-        help="JSON validation specification.",
+    input_file: Path = typer.Argument(..., help="Dataset file."),
+    required_columns: str | None = typer.Option(
+        None, "--required-columns", help="Comma-separated required column names."
     ),
-) -> None:
-    """Validate a dataset against a specification."""
-
+    expected_dtypes: str | None = typer.Option(
+        None, "--dtypes", help="JSON mapping of columns to expected types."
+    ),
+    allowed_values: str | None = typer.Option(
+        None, "--allowed-values", help="JSON mapping of columns to allowed values."
+    ),
+    numeric_ranges: str | None = typer.Option(
+        None, "--numeric-ranges", help="JSON mapping of columns to numeric ranges."
+    ),
+    non_nullable: str | None = typer.Option(
+        None, "--non-nullable", help="Comma-separated non-nullable columns."
+    ),
+    unique_columns: str | None = typer.Option(
+        None, "--unique", help="Comma-separated columns that must be unique."
+    ),
+):
+    """Validate dataset against specified constraints."""
     from icebrew.data.validator import validate_data
 
-    df = load_dataset(file)
-    validation_spec = parse_json(spec, "--spec")
+    df = load_dataset(input_file)
 
-    if not isinstance(validation_spec, dict):
-        raise typer.BadParameter(
-            "Validation specification must be a JSON object."
-        )
-
-    result = validate_data(df, **validation_spec)
-
-    print_report(result, "Validation Report")
-
-    if not result.get("valid", False):
-        console.print(
-            "[bold red]Dataset validation failed.[/bold red]"
-        )
-        raise typer.Exit(code=1)
-
-    console.print(
-        "[bold green]Dataset validation passed.[/bold green]"
+    report = validate_data(
+        df,
+        required_columns=[c.strip() for c in required_columns.split(",")]
+        if required_columns
+        else None,
+        expected_dtypes=parse_json(expected_dtypes, "--dtypes")
+        if expected_dtypes
+        else None,
+        allowed_values=parse_json(allowed_values, "--allowed-values")
+        if allowed_values
+        else None,
+        numeric_ranges=parse_json(numeric_ranges, "--numeric-ranges")
+        if numeric_ranges
+        else None,
+        non_nullable=[c.strip() for c in non_nullable.split(",")]
+        if non_nullable
+        else None,
+        unique_columns=[c.strip() for c in unique_columns.split(",")]
+        if unique_columns
+        else None,
     )
+
+    print_report(report, title="Validation Results")
+
+    if not report.get("valid", False):
+        raise typer.Exit(code=1)
