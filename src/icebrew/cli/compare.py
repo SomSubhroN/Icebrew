@@ -236,10 +236,5 @@ def compare(
         )
 
 
-compare_app = typer.Typer(
-    name="compare",
-    help="Compare two datasets.",
-    no_args_is_help=True,
-)
 
-compare_app.command()(compare)
+
