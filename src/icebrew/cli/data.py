@@ -12,6 +12,7 @@ from rich.table import Table
 from icebrew.cli.utils import load_dataset, save_dataset, print_dataframe
 from icebrew.cli.transform import transform_app
 from icebrew.cli.datetime import datetime_app
+from icebrew.cli.compare import compare
 
 data_app = typer.Typer(
     name="data",
@@ -24,6 +25,9 @@ console = Console()
 # Register subcommand groups
 data_app.add_typer(transform_app, name="transform")
 data_app.add_typer(datetime_app, name="datetime")
+
+# Register standalone command
+data_app.command("compare")(compare)
 
 
 def parse_json(value: str, option_name: str = "value") -> Any:
@@ -70,12 +74,10 @@ def inspect(
     df = load_dataset(input_file)
     report = inspect_data(df, preview_rows=preview_rows)
 
-    console.print(f"\n[bold cyan]Dataset:[/bold cyan] {input_file}")
     print_report(
         {
-            "Rows": report.get("shape", (0, 0))[0],
-            "Columns": report.get("shape", (0, 0))[1],
-            "Column names": report.get("columns"),
+            "Shape": report.get("shape"),
+            "Columns": report.get("columns"),
             "Data types": report.get("dtypes"),
             "Missing values": report.get("missing"),
             "Duplicates": report.get("duplicates"),
@@ -243,7 +245,7 @@ def crosstab_command(
     input_file: Path = typer.Argument(..., help="Dataset file."),
     index: str = typer.Option(..., "--index"),
     columns: str = typer.Option(..., "--columns"),
-    normalize: str = typer.Option(False, "--normalize"),
+    normalize: bool = typer.Option(False, "--normalize"),
     margins: bool = typer.Option(False, "--margins"),
     dropna: bool = typer.Option(True, "--dropna/--keepna"),
 ):
