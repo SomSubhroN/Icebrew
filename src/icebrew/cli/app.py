@@ -10,6 +10,7 @@ from rich.console import Console
 from icebrew import __version__
 from icebrew.cli.data import data_app # type: ignore
 from icebrew.diagnostics.engine import run_diagnostics
+from icebrew.cli.stats import stats_app
 
 app = typer.Typer(
     name="icebrew",
@@ -21,6 +22,7 @@ console = Console()
 
 # Register subcommands
 app.add_typer(data_app, name="data")
+app.add_typer(stats_app, name="stats")
 
 
 @app.callback()
