@@ -90,7 +90,7 @@ def extract_datetime(
         "hour": lambda s: s.dt.hour,
         "minute": lambda s: s.dt.minute,
         "second": lambda s: s.dt.second,
-        "dayofweek": lambda s: s.dt.dayofweek,
+        "dayofweek": lambda s: s.dt.day_of_week,
         "dayofyear": lambda s: s.dt.dayofyear,
         "week": lambda s: s.dt.isocalendar().week,
         "quarter": lambda s: s.dt.quarter,
