@@ -11,6 +11,11 @@ from icebrew.stats.hypothesis import (
     one_sample_t_test,
     one_sample_z_test,
 )
+from icebrew.stats.independent import independent_t_test
+from icebrew.stats.paired import (
+    paired_t_test,
+    wilcoxon_signed_rank_test,
+)
 
 __all__ = [
     "describe_numeric",
@@ -24,4 +29,6 @@ __all__ = [
     "hedges_g",
     "one_sample_t_test",
     "one_sample_z_test",
+    "paired_t_test",
+    "wilcoxon_signed_rank_test",
 ]
