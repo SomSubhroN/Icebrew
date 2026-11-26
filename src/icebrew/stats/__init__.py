@@ -7,6 +7,10 @@ from icebrew.stats.confidence import (
     proportion_confidence_interval,
 )
 from icebrew.stats.effect_size import cohens_d, hedges_g
+from icebrew.stats.hypothesis import (
+    one_sample_t_test,
+    one_sample_z_test,
+)
 
 __all__ = [
     "describe_numeric",
@@ -18,4 +22,6 @@ __all__ = [
     "proportion_confidence_interval",
     "cohens_d",
     "hedges_g",
+    "one_sample_t_test",
+    "one_sample_z_test",
 ]
