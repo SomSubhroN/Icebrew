@@ -17,6 +17,11 @@ from icebrew.stats.paired import (
     wilcoxon_signed_rank_test,
 )
 
+from icebrew.stats.nonparametric import (
+    mann_whitney_u_test,
+    kruskal_wallis_test,
+)
+
 __all__ = [
     "describe_numeric",
     "describe_dataframe",
@@ -31,4 +36,6 @@ __all__ = [
     "one_sample_z_test",
     "paired_t_test",
     "wilcoxon_signed_rank_test",
+    "mann_whitney_u_test",
+    "kruskal_wallis_test",
 ]
