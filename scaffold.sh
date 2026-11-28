@@ -29,6 +29,7 @@ directories=(
     "src/icebrew/ai/benchmarks"
     "src/icebrew/models"
     "src/icebrew/ai/models"
+    "src/icebrew/ai/catalog"
 
     # Media
     "src/icebrew/media/image"
@@ -110,6 +111,9 @@ files=(
     src/icebrew/ai/models/manifest.py
     src/icebrew/ai/models/manager.py
     tests/ai/test_models.py
+    src/icebrew/ai/catalog/catalog.py
+src/icebrew/ai/catalog/source_resolver.py
+tests/ai/test_catalog_resolution.py
 
     # Repository configuration
     ".gitignore"
