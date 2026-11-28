@@ -94,7 +94,7 @@ user-config.yml
 # AI models and downloads
 # ==================================================
 
-models/
+/models/
 /downloads/
 model_cache/
 model-cache/

@@ -28,6 +28,7 @@ directories=(
     "src/icebrew/ai/inference"
     "src/icebrew/ai/benchmarks"
     "src/icebrew/models"
+    "src/icebrew/ai/models"
 
     # Media
     "src/icebrew/media/image"
@@ -102,6 +103,13 @@ files=(
 
     # Python project configuration
     "pyproject.toml"
+
+    #AI Models
+    src/icebrew/ai/models/__init__.py
+    src/icebrew/ai/models/storage.py
+    src/icebrew/ai/models/manifest.py
+    src/icebrew/ai/models/manager.py
+    tests/ai/test_models.py
 
     # Repository configuration
     ".gitignore"
